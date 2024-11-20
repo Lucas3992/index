@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de Tennis</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #eaeaea;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            cursor: none; /* Cache le curseur de la souris */
+        }
+
+        canvas {
+            border: 2px solid #333;
+            background-color: #fff;
+            position: relative;
+        }
+
+        #score, #lives {
+            font-size: 20px;
+            color: #333;
+        }
+
+        #countdown, #letter {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 80px; /* Taille du texte */
+            color: red;
+            display: none; /* Masquer au début */
+        }
+
+        #countdown {
+            top: 30%; /* Position du compte à rebours */
+        }
+
+        #letter {
+            top: 60%; /* Position de l'instruction */
+            color: #333; /* Couleur de l'instruction */
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <div id="lives">Vies: 3</div>
+    <canvas id="tennisGame" width="800" height="400"></canvas>
+    <div id="countdown">4</div>
+    <div id="letter">Tapez: A</div>
+
+    <script>
+        const canvas = document.getElementById("tennisGame");
+        const ctx = canvas.getContext("2d");
+        const scoreDisplay = document.getElementById("score");
+        const livesDisplay = document.getElementById("lives");
+        const letterDisplay = document.getElementById("letter");
+        const countdownDisplay = document.getElementById("countdown");
+
+        let ballRadius = 10;
+        let balls = [
+            { x: canvas.width / 2, y: canvas.height / 2, dx: 2, dy: -2 } // Première balle
+        ];
+        const initialPaddleHeight = 10;
+        let paddleHeight = initialPaddleHeight;
+        let paddleWidth = 75;
+        let paddleX = (canvas.width - paddleWidth) / 2;
+
+        let score = 0; // Initialiser le score
+        let lives = 3; // Initialiser le nombre de vies
+        let currentLetter = "";
+        let letterTimer; // Timer pour la lettre
+        let countdown = 4; // Compte à rebours
+        let countdownInterval; // Intervalle pour le décompte
+
+        document.addEventListener("mousemove", (event) => {
+            const relativeX = event.clientX - canvas.offsetLeft;
+            paddleX = Math.max(0, Math.min(canvas.width - paddleWidth, relativeX - paddleWidth / 2));
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (currentLetter && event.key.toUpperCase() === currentLetter) {
+                resetLetter(); // Réinitialiser la lettre
+            } else if (currentLetter) {
+                lives--; // Perdre une vie si la lettre est incorrecte
+                updateLives();
+                if (lives === 0) {
+                    alert("T'es claqué au sol dédé !");
+                    document.location.reload(); // Redémarre le jeu
+                }
+            }
+        });
+
+        function drawBall(ball) {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
+            ctx.fillStyle = "#0095DD";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawPaddle() {
+            ctx.beginPath();
+            ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+            ctx.fillStyle = "#0095DD";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawScore() {
+            scoreDisplay.innerText = `Score: ${score}`;
+        }
+
+        function updateLives() {
+            livesDisplay.innerText = `Vies: ${lives}`;
+        }
+
+        function setNewLetter() {
+            const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            currentLetter = letters.charAt(Math.floor(Math.random() * letters.length));
+            letterDisplay.innerText = `Tapez: ${currentLetter}`;
+            letterDisplay.style.display = "block"; // Afficher la lettre
+            countdown = 4; // Réinitialiser le compte à rebours
+            countdownDisplay.innerText = countdown; // Afficher le compte à rebours
+            countdownDisplay.style.display = "block"; // Afficher le compte à rebours
+            startCountdown(); // Démarrer le compte à rebours
+        }
+
+        function startCountdown() {
+            clearInterval(countdownInterval); // Effacer l'intervalle précédent
+            countdown = 4; // Réinitialiser le compte à rebours
+            countdownDisplay.innerText = countdown; // Afficher le compte à rebours
+            countdownInterval = setInterval(() => {
+                countdown--;
+                countdownDisplay.innerText = countdown;
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval); // Arrêter le compte à rebours
+                    lives--; // Perdre une vie si le compte à rebours expire
+                    updateLives();
+                    if (lives > 0) {
+                        setNewLetter(); // Changer la lettre si des vies restent
+                    } else {
+                        alert("T'es claqué au sol dédé !");
+                        document.location.reload(); // Redémarre le jeu
+                    }
+                }
+            }, 1000); // Décrémenter chaque seconde
+        }
+
+        function resetLetter() {
+            currentLetter = ""; // Réinitialiser la lettre courante
+            letterDisplay.style.display = "none"; // Masquer la lettre
+            countdownDisplay.style.display = "none"; // Masquer le compte à rebours
+            clearInterval(countdownInterval); // Arrêter le compte à rebours
+            setNewLetter(); // Générer une nouvelle lettre
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            balls.forEach(drawBall);
+            drawPaddle();
+            drawScore();
+
+            balls.forEach(ball => {
+                if (ball.x + ball.dx > canvas.width - ballRadius || ball.x + ball.dx < ballRadius) {
+                    ball.dx = -ball.dx; // Inverser la direction
+                }
+                if (ball.y + ball.dy < ballRadius) {
+                    ball.dy = -ball.dy; // Inverser la direction
+                } else if (ball.y + ball.dy > canvas.height - ballRadius) {
+                    if (ball.x > paddleX && ball.x < paddleX + paddleWidth) {
+                        ball.dy = -ball.dy; // Inverser la direction
+                        increaseSpeed(ball); // Augmenter la vitesse
+                        shrinkPaddle(); // Rétrécir le paddle
+                        score++; // Augmenter le score
+                        drawScore();
+                    } else {
+                        lives--; // Perdre une vie si la balle tombe
+                        updateLives();
+                        if (lives === 0) {
+                            alert("T'es claqué au sol dédé !");
+                            document.location.reload(); // Redémarre le jeu
+                        }
+                    }
+                }
+
+                ball.x += ball.dx;
+                ball.y += ball.dy;
+            });
+
+            if (score === 10 && balls.length === 1) {
+                addSecondBall(); // Ajouter une deuxième balle si le score atteint 10
+            }
+
+            if (score >= 5 && !currentLetter) {
+                setNewLetter(); // Changer la lettre après 5 points
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        function increaseSpeed(ball) {
+            ball.dx *= 1.05; // Augmenter la vitesse de 5%
+            ball.dy *= 1.05; // Augmenter la vitesse de 5%
+        }
+
+        function shrinkPaddle() {
+            paddleWidth *= 0.95; // Rétrécir le paddle de 5%
+            if (paddleWidth < initialPaddleHeight * 0.5) {
+                paddleWidth = initialPaddleHeight * 0.5; // Limiter à 50% de la taille initiale
+            }
+        }
+
+        function addSecondBall() {
+            balls.push({ x: canvas.width / 2, y: canvas.height / 2, dx: -2, dy: -2 }); // Deuxième balle
+        }
+
+        draw();
+    </script>
+</body>
+</html>
